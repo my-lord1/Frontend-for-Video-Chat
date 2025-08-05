@@ -1,149 +1,144 @@
-import {io} from 'socket.io-client';
-import {useEffect, useRef} from 'react';
+import { io } from 'socket.io-client';
+import { useEffect, useRef } from 'react';
+
 const socket = io('http://localhost:4000');
 
-
-
 export default function VideoChat() {
-    const videoRef = useRef(null);
-    const localStreamRef = useRef(null);
-    const socketRef = useRef(null);
-    const peerConnectionsRef = useRef({});
-    const remoteContainerRef = useRef(null);
+  const videoRef = useRef(null);
+  const localStreamRef = useRef(null);
+  const socketRef = useRef(null);
+  const peerConnectionsRef = useRef({});
+  const remoteContainerRef = useRef(null);
 
-    const setupOnTrack = (peerConnection) => {
-        peerConnection.ontrack = (event) => {
-          const remoteStream = event.streams[0];
-          if (remoteStream) {
-            const remoteVideo = document.createElement("video");
-            remoteVideo.autoplay = true;
-            remoteVideo.playsInline = true;
-            remoteVideo.srcObject = remoteStream;
-            remoteVideo.className = "w-[400px] h-[300px] bg-black";
-            remoteContainerRef.appendChild(remoteVideo); // OR use a div with ref if you want to control layout
+  const setupOnTrack = (peerConnection, peerId) => {
+    const remoteStream = new MediaStream();
+
+    peerConnection.ontrack = (event) => {
+      remoteStream.addTrack(event.track);
+    };
+
+    peerConnection.onconnectionstatechange = () => {
+      if (peerConnection.connectionState === 'connected') {
+        const remoteVideo = document.createElement("video");
+        remoteVideo.autoplay = true;
+        remoteVideo.playsInline = true;
+        remoteVideo.srcObject = remoteStream;
+        remoteVideo.className = "w-[400px] h-[300px] bg-black";
+        remoteContainerRef.current.appendChild(remoteVideo);
+      }
+    };
+  };
+
+  useEffect(() => {
+    async function startVideoChat() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true },
+          video: true,
+        });
+
+        videoRef.current.srcObject = stream;
+        localStreamRef.current = stream;
+
+        socketRef.current = socket;
+        socket.emit("join-room", "room123");
+      } catch (err) {
+        console.error("Failed to access media devices:", err);
+      }
+    }
+
+    startVideoChat();
+
+    socket.on("existing-peers", async ({ peers }) => {
+      peers.forEach(async (peerId) => {
+        const peerConnection = new RTCPeerConnection({ iceServers });
+        peerConnectionsRef.current[peerId] = peerConnection;
+        setupOnTrack(peerConnection, peerId);
+
+        localStreamRef.current.getTracks().forEach((track) => {
+          peerConnection.addTrack(track, localStreamRef.current);
+        });
+
+        peerConnection.onicecandidate = (event) => {
+          if (event.candidate) {
+            socket.emit("signal", {
+              to: peerId,
+              type: "ice-candidate",
+              payload: event.candidate,
+            });
           }
         };
-      };
-    // gathering all media devices and user joining the room
-    useEffect(()=> {
-        async function startVideoChat(cameraId, minWidth, MinHeight) {
-            const constraints = {
-                'audio' : { 'echoCancellation': true},
-                'video' : { 'deviceId': cameraId,
-                    'width' : { 'min': minWidth },
-                    'height' : { 'min': MinHeight }
-                }
-            }
-
-            try { 
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                    localStreamRef.current = stream;
-                }
-                socketRef.current = socket;
-                socket.emit("join-room", "room123");
-            } catch (error) {   
-                console.error("Error accessing media devices.", error);
-            }
-        }
-        startVideoChat();
-    }, []);
-
-    // stun servers configuration
-    const iceServers = [
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun.l.google.com:5349" },
-        { urls: "stun:stun1.l.google.com:3478" },]
-    
-    //recieving the peerid, creating a peer connection,
-    // storing both in hashmaps and creating a offer and setLocalDescription
-    socket.on("existing-peers", (peers) => {
-        peers.forEach(async peerId => {
-            const peerConnection = new RTCPeerConnection({ iceServers });
-            peerConnectionsRef.current[peerId] = peerConnection;
-            setupOnTrack(peerConnection);
-
-            localStreamRef.current.getTracks().forEach(track=> {
-                peerConnection.addTrack(track, localStreamRef.current);
-            });
-        
+ 
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
-        peerConnection.onicecandidate = (event) => {
-            socket.emit("signal", {
-                to: peerId,
-                type: "ice-candidate",
-                payload: event.candidate
-            })
-        } 
+
         socket.emit("signal", {
-            to: peerId,
-            type: "offer",
-            payload: offer,
-        })
+          to: peerId,
+          type: "offer",
+          payload: offer,
         });
-        
+      });
     });
-    //see for now i created a peer connection between user joined to existing peers
-        //now, i have to create a peer connection between existing peers to new user right?
+
     socket.on("signal", async ({ from, type, payload }) => {
-        if (!peerConnectionsRef.current[from]) {
-            const peerConnection = new RTCPeerConnection({ iceServers });
-            peerConnectionsRef.current[from] = peerConnection;
-            setupOnTrack(peerConnection);
+      let peerConnection = peerConnectionsRef.current[from];
 
-            localStreamRef.current.getTracks().forEach(track => {
-                peerConnection.addTrack(track, localStreamRef.current);
-            })
+      if (!peerConnection) {
+        peerConnection = new RTCPeerConnection({ iceServers });
+        peerConnectionsRef.current[from] = peerConnection;
+        setupOnTrack(peerConnection, from);
 
-            peerConnection.onicecandidate = (event) => {
-            if (event.candidate) {
-                socket.emit("signal", {
-                    to: from,
-                    type: "ice-candidate",
-                    payload: event.candidate
-                    });
-                }   
-            }
-        }
-        const peerConnection = peerConnectionsRef.current[from];
-        if (type === "offer") {
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(payload));
-            const answer = await peerConnection.createAnswer();
-            await peerConnection.setLocalDescription(answer);
+        localStreamRef.current.getTracks().forEach((track) => {
+          peerConnection.addTrack(track, localStreamRef.current);
+        });
+
+        peerConnection.onicecandidate = (event) => {
+          if (event.candidate) {
             socket.emit("signal", {
-                to: from,
-                type: "answer",
-                payload: answer
-            })
-        }
+              to: from,
+              type: "ice-candidate",
+              payload: event.candidate,
+            });
+          }
+        };
+      }
 
-        
+      try {
+        if (type === "offer") {
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(payload));
+          const answer = await peerConnection.createAnswer();
+          await peerConnection.setLocalDescription(answer);
 
-        if (type === "ice-candidate") {
-            try{await peerConnection.addIceCandidate(payload)}
-            catch(error) {
-                console.error("Error adding received ice candidate", error); // this should be in existing peers too
-            }
+          socket.emit("signal", {
+            to: from,
+            type: "answer",
+            payload: answer,
+          });
+        } else if (type === "answer") {
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(payload));
+        } else if (type === "ice-candidate") {
+          if (payload && payload.candidate) {
+            await peerConnection.addIceCandidate(new RTCIceCandidate(payload));
+          } else {
+            console.warn("⚠️ ICE candidate payload missing or invalid");
+          }
+        } else {
+          console.warn("❓ Unknown signal type:", type);
         }
-        if (type === "answer") {
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(payload));
-        }
-        
-
+      } catch (err) {
+        console.error(`❌ Error handling signal type ${type}:`, err);
+      }
     });
+  }, []);
 
+  const iceServers = [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun.l.google.com:5349" },
+    { urls: "stun:stun1.l.google.com:3478" },
+  ];
 
-
-
-
-
-
-
-
-    return (
-        <div className="p-4">
+  return (
+    <div className="p-4">
       <h1 className="text-xl font-bold mb-4">Video Chat</h1>
 
       <div className="flex gap-4 flex-wrap">
@@ -160,13 +155,9 @@ export default function VideoChat() {
 
         <div>
           <h2 className="text-md font-semibold mb-2">Remote Videos</h2>
-          <div
-            ref={remoteContainerRef}
-            className="flex gap-4 flex-wrap"
-          />
+          <div ref={remoteContainerRef} className="flex gap-4 flex-wrap" />
         </div>
       </div>
     </div>
-      )
-    
-    }
+  );
+}
