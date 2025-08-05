@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 
 const socket = io('http://localhost:4000');
 
-export default function VideoChat() {
+export default function VideoChat(roomId) {
   const videoRef = useRef(null);
   const localStreamRef = useRef(null);
   const socketRef = useRef(null);
@@ -41,14 +41,14 @@ export default function VideoChat() {
         localStreamRef.current = stream;
 
         socketRef.current = socket;
-        socket.emit("join-room", "room123");
+        socket.emit("join-room", `${roomId}`);
       } catch (err) {
         console.error("Failed to access media devices:", err);
       }
     }
-
-    startVideoChat();
-
+    if(roomId) {
+      startVideoChat();
+    }
     socket.on("existing-peers", async ({ peers }) => {
       peers.forEach(async (peerId) => {
         const peerConnection = new RTCPeerConnection({ iceServers });
@@ -129,7 +129,7 @@ export default function VideoChat() {
         console.error(`❌ Error handling signal type ${type}:`, err);
       }
     });
-  }, []);
+  }, [roomId]);
 
   const iceServers = [
     { urls: "stun:stun.l.google.com:19302" },
