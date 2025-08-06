@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 
 const socket = io('http://localhost:4000');
 
-export default function VideoChat(roomId) {
+export default function VideoChat({roomId}) {
   const videoRef = useRef(null);
   const localStreamRef = useRef(null);
   const socketRef = useRef(null);
@@ -41,7 +41,7 @@ export default function VideoChat(roomId) {
         localStreamRef.current = stream;
 
         socketRef.current = socket;
-        socket.emit("join-room", `${roomId}`);
+        socket.emit("join-room", roomId);
       } catch (err) {
         console.error("Failed to access media devices:", err);
       }
@@ -138,12 +138,16 @@ export default function VideoChat(roomId) {
   ];
 
   return (
-    <div className="p-4">
+    <div className="flex flex-col items-center justify-center h-screen w-screen p-4">
       <h1 className="text-xl font-bold mb-4">Video Chat</h1>
 
-      <div className="flex gap-4 flex-wrap">
+      <div className="flex flex-col gap-4">
         <div>
-          <h2 className="text-md font-semibold mb-2">Your Video</h2>
+          <h2 className="text-md font-semibold mb-2 ">Remote Videos</h2>
+          <div ref={remoteContainerRef} className="flex gap-4 flex-wrap" />
+        </div>
+        <div>
+        <h2 className="text-md font-semibold mb-2 ">your video</h2>
           <video
             ref={videoRef}
             autoPlay
@@ -153,10 +157,7 @@ export default function VideoChat(roomId) {
           />
         </div>
 
-        <div>
-          <h2 className="text-md font-semibold mb-2">Remote Videos</h2>
-          <div ref={remoteContainerRef} className="flex gap-4 flex-wrap" />
-        </div>
+        
       </div>
     </div>
   );
