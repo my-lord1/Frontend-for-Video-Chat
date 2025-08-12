@@ -19,37 +19,56 @@ export default function VideoChat({ roomId }) {
     { urls: "stun:stun.l.google.com:5349" },
     { urls: "stun:stun1.l.google.com:3478" },
   ];
-
-  const logStreamTracks = (stream, label) => {
-    console.log(`📹 Tracks in ${label}:`, stream.getTracks().map(t => `${t.kind} (${t.label})`));
-  };
   
   const setupOnTrack = (peerConnection, peerId) => {
-    console.log(`🛠 Setting up ontrack for peer ${peerId}`);
+    console.log(`🎯 Setting up ontrack for peer: ${peerId}`);
     
     if (!remoteStreamsRef.current[peerId]) {
       remoteStreamsRef.current[peerId] = {
         webcam: new MediaStream(),
         screen: new MediaStream(),
-        videoTracks: []
+        trackCount: 0
       };
+      console.log(`🎯 Created new remote streams for ${peerId}`);
     }
   
     peerConnection.ontrack = (event) => {
-      console.log(`[ontrack] Peer ${peerId} track received: kind=${event.track.kind}, label=${event.track.label}`);
+      console.log(`🎯 TRACK RECEIVED from ${peerId}: ${event.track.kind} - ${event.track.id}`);
+      
+      // CHANGE 1: Check if we already processed this exact track
+      const existingTracks = [
+        ...remoteStreamsRef.current[peerId].webcam.getTracks(),
+        ...remoteStreamsRef.current[peerId].screen.getTracks()
+      ];
+      
+      const alreadyProcessed = existingTracks.some(track => track.id === event.track.id);
+      if (alreadyProcessed) {
+        console.log(`🎯 Track ${event.track.id} already processed, ignoring duplicate`);
+        return; // Skip duplicate tracks
+      }
   
       if (event.track.kind === "video") {
-        const existingVideoTracks = remoteStreamsRef.current[peerId].videoTracks.length;
+        // CHANGE 2: Improved screen share detection
+        const hasScreenKeyword = event.track.label.toLowerCase().includes('screen') || 
+                                event.track.label.toLowerCase().includes('display') ||
+                                event.track.label.toLowerCase().includes('window') ||
+                                event.track.label.toLowerCase().includes('tab');
         
-        // CORE FIX: Simple track counting instead of unreliable label detection
-        const isScreenShare = existingVideoTracks > 0;
+        // Check if we already have a webcam track (smart fallback)
+        const hasWebcamTrack = remoteStreamsRef.current[peerId].webcam.getTracks().length > 0;
+        
+        const isScreenShare = hasScreenKeyword || (hasWebcamTrack && !hasScreenKeyword);
+        
+        console.log(`🎯 Track label: "${event.track.label}"`);
+        console.log(`🎯 Has screen keyword: ${hasScreenKeyword}`);
+        console.log(`🎯 Already has webcam: ${hasWebcamTrack}`);
+        console.log(`🎯 Classified as: ${isScreenShare ? 'SCREEN SHARE' : 'WEBCAM'}`);
         
         if (isScreenShare) {
-          console.log(`🖥 Adding screen track for ${peerId}`);
           remoteStreamsRef.current[peerId].screen.addTrack(event.track);
-  
           let screenVideo = document.getElementById(`screen-${peerId}`);
           if (!screenVideo) {
+            console.log(`🎯 Creating NEW screen video element for ${peerId}`);
             screenVideo = document.createElement("video");
             screenVideo.id = `screen-${peerId}`;
             screenVideo.autoplay = true;
@@ -58,13 +77,11 @@ export default function VideoChat({ roomId }) {
             remoteContainerRef.current.appendChild(screenVideo);
           }
           screenVideo.srcObject = remoteStreamsRef.current[peerId].screen;
-  
         } else {
-          console.log(`🎥 Adding webcam track for ${peerId}`);
           remoteStreamsRef.current[peerId].webcam.addTrack(event.track);
-  
           let webcamVideo = document.getElementById(`video-${peerId}`);
           if (!webcamVideo) {
+            console.log(`🎯 Creating NEW webcam video element for ${peerId}`);
             webcamVideo = document.createElement("video");
             webcamVideo.id = `video-${peerId}`;
             webcamVideo.autoplay = true;
@@ -74,28 +91,58 @@ export default function VideoChat({ roomId }) {
           }
           webcamVideo.srcObject = remoteStreamsRef.current[peerId].webcam;
         }
-        
-        remoteStreamsRef.current[peerId].videoTracks.push(event.track);
+        remoteStreamsRef.current[peerId].trackCount++;
       }
   
       if (event.track.kind === "audio") {
-        console.log(`🎧 Adding audio track for ${peerId}`);
+        // CHANGE 3: Also prevent duplicate audio elements
+        const existingAudioElements = document.querySelectorAll(`audio[data-peer="${peerId}"][data-track="${event.track.id}"]`);
+        if (existingAudioElements.length > 0) {
+          console.log(`🎯 Audio element for track ${event.track.id} already exists, ignoring`);
+          return;
+        }
+        
+        console.log(`🎯 Creating audio element for ${peerId}`);
         const audioEl = document.createElement("audio");
         audioEl.autoplay = true;
         audioEl.srcObject = new MediaStream([event.track]);
+        // Add identifiers to prevent duplicates
+        audioEl.setAttribute('data-peer', peerId);
+        audioEl.setAttribute('data-track', event.track.id);
         remoteContainerRef.current.appendChild(audioEl);
       }
     };
   };
+
+  const addAllTracksToConnection = (pc) => {
+    console.log(`🔥 addAllTracksToConnection called by ${socketRef.current?.id}`);
+    
+    const existingSenders = pc.getSenders();
+    const hasAudio = existingSenders.some(s => s.track && s.track.kind === 'audio');
+    const hasVideo = existingSenders.some(s => s.track && s.track.kind === 'video');
+    
+    console.log(`🔥 Connection already has: Audio=${hasAudio}, Video=${hasVideo}`);
+    
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => {
+        const shouldSkip = (track.kind === 'audio' && hasAudio) || 
+                          (track.kind === 'video' && hasVideo);
+        
+        if (!shouldSkip) {
+          console.log(`✅ Adding ${track.kind} track: ${track.id}`);
+          pc.addTrack(track, localStreamRef.current);
+        } else {
+          console.log(`⚠️ Skipping ${track.kind} - already exists`);
+        }
+      });
+    }
+    
+    console.log(`🔥 Final senders: ${pc.getSenders().length}`);
+  };
   
   const startScreenShare = async () => {
     try {
-      console.log("🖥️ Starting screen share...");
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-      });
-      console.log("🖥️ Screen share stream obtained:", screenStream);
-
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
       screenStreamRef.current = screenStream;
 
       const localScreenVideo = document.getElementById("local-screen");
@@ -103,116 +150,102 @@ export default function VideoChat({ roomId }) {
         localScreenVideo.srcObject = screenStream;
       }
 
+      // Add screen tracks to all existing connections (keep webcam tracks)
       Object.entries(peerConnectionsRef.current).forEach(([peerId, pc]) => {
-        console.log(`🛠️ Adding screen tracks to peer ${peerId}`);
-        
-        const senders = pc.getSenders();
-        senders.forEach(sender => {
-          if (
-            sender.track &&
-            sender.track.kind === "video" &&
-            sender.track.label.toLowerCase().includes("screen")
-          ) {
-            pc.removeTrack(sender);
-          }
-        });
-
-        screenStream.getTracks().forEach((track) => {
-          console.log(`➕ Adding screen track to peer ${peerId}: ${track.kind} (${track.label})`);
-          pc.addTrack(track, screenStream);
-        });
-
+        screenStream.getTracks().forEach(track => pc.addTrack(track, screenStream));
         renegotiate(peerId, pc);
       });
+
+      // Handle screen share ending
+      screenStream.getVideoTracks()[0].addEventListener('ended', stopScreenShare);
     } catch (err) {
-      console.error("❌ Error starting screen share:", err);
+      console.error("Screen share failed:", err);
+    }
+  };
+
+  const stopScreenShare = () => {
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach(track => track.stop());
+      
+      const localScreenVideo = document.getElementById("local-screen");
+      if (localScreenVideo) localScreenVideo.srcObject = null;
+
+      // Remove only screen tracks from all connections
+      Object.entries(peerConnectionsRef.current).forEach(([peerId, pc]) => {
+        const screenSenders = pc.getSenders().filter(sender => 
+          sender.track && sender.track.kind === "video" && 
+          sender.track.label.toLowerCase().includes("screen")
+        );
+        screenSenders.forEach(sender => pc.removeTrack(sender));
+        if (screenSenders.length > 0) renegotiate(peerId, pc);
+      });
+
+      screenStreamRef.current = null;
     }
   };
   
   const renegotiate = async (peerId, pc) => {
     try {
-      console.log(`🔄 Renegotiation started with peer ${peerId}`);
-      const offer = await pc.createOffer();
+      // Force a fresh negotiation regardless of role
+      const offer = await pc.createOffer({ iceRestart: true });
       await pc.setLocalDescription(offer);
-      socketRef.current.emit("signal", {
-        to: peerId,
-        type: "offer",
-        payload: offer,
-      });
+      socketRef.current.emit("signal", { to: peerId, type: "offer", payload: offer });
+      console.log(`Renegotiation initiated with ${peerId} from ${socketRef.current.id}`);
     } catch (err) {
-      console.error(`❌ Renegotiation failed with peer ${peerId}:`, err);
+      console.error(`Renegotiation failed with ${peerId}:`, err);
     }
   };
-
   useEffect(() => {
     async function startVideoChat() {
+      if (localStreamRef.current) {
+        console.log("🔥 Stream already exists, skipping getUserMedia");
+        return;
+      }
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: { echoCancellation: true },
           video: true,
         });
+        console.log(`🔥 NEW LOCAL STREAM CREATED: ${stream.id}`);
+          stream.getTracks().forEach(track => {
+        console.log(`🔥 Stream Track: ${track.kind} - ${track.id}`);
+        });
 
         videoRef.current.srcObject = stream;
         localStreamRef.current = stream;
-
         socketRef.current = socket;
         socket.emit("join-room", { roomId });
 
         socket.on("existing-peers", async ({ peers }) => {
           for (const peerId of peers) {
-            console.log(`🔹 Creating connection to existing peer: ${peerId}`);
             const pc = new RTCPeerConnection({ iceServers });
             peerConnectionsRef.current[peerId] = pc;
-
             setupOnTrack(pc, peerId);
-
-            localStreamRef.current.getTracks().forEach((track) => {
-              pc.addTrack(track, localStreamRef.current);
-            });
+            addAllTracksToConnection(pc);
 
             pc.onicecandidate = (event) => {
               if (event.candidate) {
-                socket.emit("signal", {
-                  to: peerId,
-                  type: "ice-candidate",
-                  payload: event.candidate,
-                });
+                socket.emit("signal", { to: peerId, type: "ice-candidate", payload: event.candidate });
               }
             };
 
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-
-            socket.emit("signal", {
-              to: peerId,
-              type: "offer",
-              payload: offer,
-            });
+            socket.emit("signal", { to: peerId, type: "offer", payload: offer });
           }
         });
 
         socket.on("signal", async ({ from, type, payload }) => {
-          console.log(`📩 Signal received from ${from} - type: ${type}`);
-        
           let pc = peerConnectionsRef.current[from];
           if (!pc) {
-            console.log(`🔹 Creating new RTCPeerConnection for ${from}`);
             pc = new RTCPeerConnection({ iceServers });
             peerConnectionsRef.current[from] = pc;
-        
             setupOnTrack(pc, from);
-        
-            localStreamRef.current.getTracks().forEach((track) => {
-              pc.addTrack(track, localStreamRef.current);
-            });
-        
+            addAllTracksToConnection(pc);
+            
             pc.onicecandidate = (event) => {
               if (event.candidate) {
-                socket.emit("signal", {
-                  to: from,
-                  type: "ice-candidate",
-                  payload: event.candidate,
-                });
+                socket.emit("signal", { to: from, type: "ice-candidate", payload: event.candidate });
               }
             };
           }
@@ -222,25 +255,33 @@ export default function VideoChat({ roomId }) {
               await pc.setRemoteDescription(new RTCSessionDescription(payload));
               const answer = await pc.createAnswer();
               await pc.setLocalDescription(answer);
-              socket.emit("signal", {
-                to: from,
-                type: "answer",
-                payload: answer,
-              });
-        
+              socket.emit("signal", { to: from, type: "answer", payload: answer });
             } else if (type === "answer") {
               await pc.setRemoteDescription(new RTCSessionDescription(payload));
-        
             } else if (type === "ice-candidate") {
               if (payload && payload.candidate) {
                 await pc.addIceCandidate(new RTCIceCandidate(payload));
               }
             }
           } catch (err) {
-            console.error(`❌ Error handling ${type} from ${from}:`, err);
+            console.error(`Error handling ${type} from ${from}:`, err);
           }
         });
-        } catch (err) {
+
+        // Cleanup on disconnect
+        socket.on("peer-disconnected", ({ peerId }) => {
+          if (peerConnectionsRef.current[peerId]) {
+            peerConnectionsRef.current[peerId].close();
+            delete peerConnectionsRef.current[peerId];
+          }
+          // Remove video elements
+          ['video', 'screen'].forEach(type => {
+            const el = document.getElementById(`${type}-${peerId}`);
+            if (el) el.remove();
+          });
+        });
+
+      } catch (err) {
         console.error("Failed to access media devices:", err);
       }
     }
@@ -248,7 +289,23 @@ export default function VideoChat({ roomId }) {
     if (roomId) {
       startVideoChat();
     }
+
+    // Cleanup on unmount
+    return () => {
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+      Object.values(peerConnectionsRef.current).forEach(pc => pc.close());
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
   }, [roomId]);
+
+  const isScreenSharing = screenStreamRef.current !== null;
   
   return (
     <div className="m-10 fixed inset-[0] scale-[0.9] w-screen h-screen flex flex-col items-center justify-center">
@@ -273,7 +330,9 @@ export default function VideoChat({ roomId }) {
             </div>
             
             <div>
-              <h3 className="text-sm font-medium mb-1">Your Screen Share</h3>
+              <h3 className="text-sm font-medium mb-1">
+                Your Screen Share {isScreenSharing ? "(Active)" : ""}
+              </h3>
               <video
                 id="local-screen"
                 autoPlay
@@ -286,14 +345,25 @@ export default function VideoChat({ roomId }) {
         
         <div className="border-1 p-3 flex justify-center gap-4 mt-3">
           <button 
-            className="text-black font-medium rounded-lg px-6 py-3 border-2 border-yellow-400"
-            onClick={startScreenShare}>
-            Start Screen Share
+            className={`text-black font-medium rounded-lg px-6 py-3 border-2 border-yellow-400 ${
+              isScreenSharing ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+            onClick={startScreenShare}
+            disabled={isScreenSharing}>
+            {isScreenSharing ? "Screen Sharing..." : "Start Screen Share"}
           </button>
           <button 
-            className="text-black font-medium rounded-lg px-6 py-3 border-2 border-yellow-400">
+            className={`text-black font-medium rounded-lg px-6 py-3 border-2 border-yellow-400 ${
+              !isScreenSharing ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+            onClick={stopScreenShare}
+            disabled={!isScreenSharing}>
             Stop Screen Share
           </button>
+        </div>
+        
+        <div className="text-center mt-2 text-sm">
+          Status: Broadcasting {isScreenSharing ? "Camera + Screen" : "Camera only"}
         </div>
       </div>
     </div>
