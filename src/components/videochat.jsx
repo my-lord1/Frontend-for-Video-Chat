@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { EndCall } from "../icons/endcall.jsx";
 
 
-const socket = io("http://localhost:3000");
+const socket = io("https://backend-for-video-chat.vercel.app/");
 
 export default function VideoChat({ roomId }) {
   const videoRef = useRef(null);
