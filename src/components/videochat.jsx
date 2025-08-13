@@ -1,6 +1,8 @@
 import { io } from "socket.io-client";
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { EndCall } from "../icons/endcall.jsx";
+
 
 const socket = io("http://localhost:3000");
 
@@ -34,6 +36,7 @@ export default function VideoChat({ roomId }) {
   
     peerConnection.ontrack = (event) => {
       console.log(`🎯 TRACK RECEIVED from ${peerId}: ${event.track.kind} - ${event.track.id}`);
+      
       
       // CHANGE 1: Check if we already processed this exact track
       const existingTracks = [
@@ -195,6 +198,15 @@ export default function VideoChat({ roomId }) {
       console.error(`Renegotiation failed with ${peerId}:`, err);
     }
   };
+
+  const handleEndCall = () => {
+    if(socketRef.current) {
+      socketRef.current.disconnect();
+      console.log("🔌 Socket disconnected");
+    
+    navigate("/");
+
+    }}
   useEffect(() => {
     async function startVideoChat() {
       if (localStreamRef.current) {
@@ -269,18 +281,31 @@ export default function VideoChat({ roomId }) {
         });
 
         // Cleanup on disconnect
-        socket.on("peer-disconnected", ({ peerId }) => {
-          if (peerConnectionsRef.current[peerId]) {
-            peerConnectionsRef.current[peerId].close();
-            delete peerConnectionsRef.current[peerId];
-          }
-          // Remove video elements
-          ['video', 'screen'].forEach(type => {
-            const el = document.getElementById(`${type}-${peerId}`);
-            if (el) el.remove();
-          });
-        });
 
+        socket.on("user-disconnected", ({ socketId }) => {
+          console.log(`🚪 User ${socketId} disconnected (server notification)`);
+          if (peerConnectionsRef.current[socketId]) {
+            peerConnectionsRef.current[socketId].close();
+            delete peerConnectionsRef.current[socketId];
+          }
+          const videoEl = document.getElementById(`video-${socketId}`);
+          const screenEl = document.getElementById(`screen-${socketId}`);
+          
+          if (videoEl) {
+            console.log(`🚪 Removing video element for ${socketId}`);
+            videoEl.remove();
+          }
+          
+          if (screenEl) {
+            console.log(`🚪 Removing screen element for ${socketId}`);
+            screenEl.remove();
+          }
+          
+          // Clean up streams reference
+          if (remoteStreamsRef.current[socketId]) {
+            delete remoteStreamsRef.current[socketId];
+          }
+        });
       } catch (err) {
         console.error("Failed to access media devices:", err);
       }
@@ -360,10 +385,10 @@ export default function VideoChat({ roomId }) {
             disabled={!isScreenSharing}>
             Stop Screen Share
           </button>
-        </div>
-        
-        <div className="text-center mt-2 text-sm">
-          Status: Broadcasting {isScreenSharing ? "Camera + Screen" : "Camera only"}
+          <button onClick={handleEndCall}>
+            <EndCall />
+            End Call
+          </button>
         </div>
       </div>
     </div>
