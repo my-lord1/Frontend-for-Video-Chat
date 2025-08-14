@@ -16,11 +16,16 @@ export default function VideoChat({ roomId }) {
   const screenStreamRef = useRef(null);
   const navigate = useNavigate();
 
-  const iceServers = [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun.l.google.com:5349" },
-    { urls: "stun:stun1.l.google.com:3478" },
-  ];
+  const iceServers = {
+    iceServers: [
+        { urls: 'stun.l.google.com:19302' },
+        {
+            urls: 'relay1.expressturn.com:3480',
+            username: '000000002070534847',
+            credential: 'VTWUsaUCxmvdCcxRHe9fPuOxOlc='
+        },
+    ]
+};
   
   const setupOnTrack = (peerConnection, peerId) => {
     console.log(`🎯 Setting up ontrack for peer: ${peerId}`);
