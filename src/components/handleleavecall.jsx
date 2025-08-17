@@ -1,20 +1,23 @@
-export const handleLeaveCall = ({ localStreamRef, videoRef, peerConnectionsRef, socketRef, roomId, navigate, }) => {
-    localStreamRef.current?.getTracks().forEach((track) => track.stop());
-    localStreamRef.current = null;
-  
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-  
-    Object.values(peerConnectionsRef.current).forEach((pc) => pc.close());
-    peerConnectionsRef.current = {};
-  
-    socketRef.current?.emit('user disconnected', roomId);
-    socketRef.current?.disconnect();
-  
-    navigate('/');
-  };
-  
-          /* <button onClick={() => handleLeaveCall({ localStreamRef, videoRef, peerConnectionsRef, socketRef, roomId, navigate, })} className="border-2 rounded-lg px-4 py-2">
-          <EndCall />
-        </button>*/ 
+export const handleEndCall = (socketRef, navigate, localStreamRef, screenStreamRef, videoRef) => {
+    if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(track => track.stop());
+        localStreamRef.current = null;
+      }
+      // Stop screen share tracks
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach(track => track.stop());
+        screenStreamRef.current = null;
+      }
+    
+      // Close all peer connections
+      if (peerConnectionsRef.current) {
+        Object.values(peerConnectionsRef.current).forEach(pc => pc.close());
+        peerConnectionsRef.current = {};
+      }
+
+    if(socketRef.current) {
+      socketRef.current.disconnect();
+      console.log("🔌 Socket disconnected");
+      navigate("/");
+    }}
+    
