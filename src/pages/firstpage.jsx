@@ -1,19 +1,27 @@
 import { useNavigate } from "react-router-dom"
-import { useState, useEffect } from "react";
-import { useRef } from "react";
+import { useState, useEffect, useContext } from "react";
+
 import { Mic, MicOff, Video, VideoOff, Camera, Users } from 'lucide-react';
+import { MediaContext } from "../components/mediaprovider";
 
 
 export function FirstPage() {
     const navigate = useNavigate();
-    const videoRef = useRef(null);
     const [roomId, setRoomId] = useState("");
     const [cameras, setCameras] = useState([]);
     const [microphones, setMicrophones] = useState([]);
-    const [selectedCameraId, setSelectedCameraId] = useState("")
-    const [selectedMicId, setSelectedMicId] = useState("")
-    const [isvideoON, setisvideoON] = useState(true)
-    const [isaudioON, setisaudioON] = useState(true)
+    const {
+        videoRef,
+        selectedCameraId,
+        setSelectedCameraId,
+        selectedMicId,
+        setSelectedMicId,
+        isvideoON,
+        setisvideoON,
+        isaudioON,
+        setisaudioON
+    } = useContext(MediaContext);
+   
 
     const handlejoin = () => {
         if(roomId.trim()) {
@@ -74,16 +82,17 @@ export function FirstPage() {
     }
 
     return (
-        <div className = "flex items-center justify-center h-screen w-screen bg-white gap-50">
+        <div className = "flex items-center justify-center h-screen w-screen bg-white gap-40">
+            
             <div className = "flex flex-col items-center justify-center" >
-                <div className = "flex flex-col items-center justify-center relative w-250 h-140">
+                <div className = "flex flex-col items-center justify-center relative w-250 h-150">
                     <div className="text-white text-4xl absolute z-10 left-10 top-4">Your Preview </div>
                     <video
                         ref={videoRef}
                         autoPlay
                         playsInline
                         muted
-                        className="w-full h-full object-cover rounded-3xl shadow-lg transform scale-x-[-1]"/>
+                        className="w-full h-full object-fill rounded-3xl shadow-lg transform scale-x-[-1]"/>
                     <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex gap-4 p-2 rounded-xl">
                         <button onClick={ toggleVideo } className="p-2 rounded-full">
                         {isvideoON ? <Video className="w-6 h-6 "/> : <VideoOff className="w-6 h-6"/>}
@@ -117,17 +126,20 @@ export function FirstPage() {
                 </div>
             </div>
             <div>
-                <div className="flex flex-col items-center justify-center gap-3 ">
+                <div className="flex flex-col items-center justify-center gap-3 border-3 border-black p-10 rounded-3xl">
                     
                         <h1 className="text-black" >Ready to join?</h1>
                         <div className="flex flex-row items-center justify-center gap-3">
                             <Users className="text-black mt-10" />
-                            <div className="text-black tex-3xl mt-10" > Number of people in Room: $number</div>
+                            <div className="text-black text-xl mt-10" > Number of people in Room: $number</div>
                         </div>
-                    <div className = " flex flex-row items-center justify-center border-1  bg-blue-600 p-5 rounded-xl gap-5 mt-5 ">
+                        <div className = " flex flex-row items-center justify-center border-1 bg-blue-600 p-5 rounded-xl gap-5 mt-5 ">
+                            <input placeholder="Enter Name" className="text-white text-lg border-1 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-white-500"></input>
+                        </div>
+                    <div className = " flex flex-row items-center justify-center border-1  bg-blue-600 p-5 rounded-xl gap-5 ">
                         <input placeholder="Enter Room ID" onChange={ (e) => setRoomId (e.target.value) } className="text-white text-lg border-1 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-white-500"></input>
-                        <button className="w-100px" onClick={handlejoin} >Join</button>
                     </div>
+                    <button className="w-20 h-13 px-4 py-2 bg-blue-600 text-white rounded-md transition-transform duration-300 hover:scale-110" onClick={handlejoin} >Join</button>
                 </div>
 
             

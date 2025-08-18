@@ -1,26 +1,31 @@
-// only for audio and video 
-export const addAllTracksToConnection = (pc, localStreamRef, socketRef) => {
-    console.log(`🔥 addAllTracksToConnection called by ${socketRef.current?.id}`);
-    
-    const existingSenders = pc.getSenders();
-    const hasAudio = existingSenders.some(s => s.track && s.track.kind === 'audio');
-    const hasVideo = existingSenders.some(s => s.track && s.track.kind === 'video');
-    
-    console.log(`🔥 Connection already has: Audio=${hasAudio}, Video=${hasVideo}`);
-    
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => {
-        const shouldSkip = (track.kind === 'audio' && hasAudio) || 
-                          (track.kind === 'video' && hasVideo);
-        
-        if (!shouldSkip) {
-          console.log(`✅ Adding ${track.kind} track: ${track.id}`);
-          pc.addTrack(track, localStreamRef.current);
-        } else {
-          console.log(`⚠️ Skipping ${track.kind} - already exists`);
-        }
-      });
+export const addAllTracksToConnection = (pc, localStreamRef, options) => {
+  const { selectedCameraId, selectedMicId, isvideoON, isaudioON } = options;
+
+  if (!localStreamRef.current) return;
+
+  const existingSenders = pc.getSenders();
+  const hasAudio = existingSenders.some(s => s.track && s.track.kind === 'audio');
+  const hasVideo = existingSenders.some(s => s.track && s.track.kind === 'video');
+
+  localStreamRef.current.getTracks().forEach(track => {
+    // skip if already exists
+    const shouldSkip = (track.kind === 'audio' && hasAudio) ||
+                       (track.kind === 'video' && hasVideo);
+    if (shouldSkip) return;
+
+    // respect toggle
+    if (track.kind === "video" && !isvideoON) return;
+    if (track.kind === "audio" && !isaudioON) return;
+
+    // only add selected camera/mic
+    if (track.kind === "video" && selectedCameraId) {
+      if (track.getSettings().deviceId !== selectedCameraId) return;
     }
-    
-    console.log(`🔥 Final senders: ${pc.getSenders().length}`);
-  };
+    if (track.kind === "audio" && selectedMicId) {
+      if (track.getSettings().deviceId !== selectedMicId) return;
+    }
+
+    pc.addTrack(track, localStreamRef.current);
+    console.log(`✅ Added ${track.kind} track: ${track.id}`);
+  });
+};
