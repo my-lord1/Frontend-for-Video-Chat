@@ -10,7 +10,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element = {<FirstPage />} />
-          <Route path="dashboard/:roomId" element = {<DashBoard />} />
+          <Route path="dashboard/:userName/:roomId" element = {<DashBoard />} />
         </Routes>
       </BrowserRouter>
     </MediaProvider>

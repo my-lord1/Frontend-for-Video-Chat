@@ -1,31 +1,23 @@
-export const addAllTracksToConnection = (pc, localStreamRef, options) => {
-  const { selectedCameraId, selectedMicId, isvideoON, isaudioON } = options;
-
+export const addAllTracksToConnection = (pc, localStreamRef, selectedCameraId, selectedMicId, isvideoON, isaudioON) => {
   if (!localStreamRef.current) return;
 
-  const existingSenders = pc.getSenders();
-  const hasAudio = existingSenders.some(s => s.track && s.track.kind === 'audio');
-  const hasVideo = existingSenders.some(s => s.track && s.track.kind === 'video');
+  const stream = localStreamRef.current;
+  
+  // Add video track
+  const videoTrack = stream.getVideoTracks()[0];
+  if (videoTrack) {
+    // Set the track's enabled state based on current video state
+    videoTrack.enabled = isvideoON;
+    pc.addTrack(videoTrack, stream);
+    console.log(`Added video track to PC - enabled: ${videoTrack.enabled}`);
+  }
 
-  localStreamRef.current.getTracks().forEach(track => {
-    // skip if already exists
-    const shouldSkip = (track.kind === 'audio' && hasAudio) ||
-                       (track.kind === 'video' && hasVideo);
-    if (shouldSkip) return;
-
-    // respect toggle
-    if (track.kind === "video" && !isvideoON) return;
-    if (track.kind === "audio" && !isaudioON) return;
-
-    // only add selected camera/mic
-    if (track.kind === "video" && selectedCameraId) {
-      if (track.getSettings().deviceId !== selectedCameraId) return;
-    }
-    if (track.kind === "audio" && selectedMicId) {
-      if (track.getSettings().deviceId !== selectedMicId) return;
-    }
-
-    pc.addTrack(track, localStreamRef.current);
-    console.log(`✅ Added ${track.kind} track: ${track.id}`);
-  });
+  // Add audio track
+  const audioTrack = stream.getAudioTracks()[0];
+  if (audioTrack) {
+    // Set the track's enabled state based on current audio state
+    audioTrack.enabled = isaudioON;
+    pc.addTrack(audioTrack, stream);
+    console.log(`Added audio track to PC - enabled: ${audioTrack.enabled}`);
+  }
 };
