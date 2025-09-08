@@ -11,7 +11,7 @@ import { Mic, MicOff, Video, VideoOff, ScreenShare, ScreenShareOff, MessageSquar
 import { useToggle } from "./stopscreenshare.jsx";
 
 
-const socket1 = io("https://backend-for-video-chat.onrender.com");
+const socket1 = io("https://backend-for-video-chat.onrender.com" || "http://localhost:4000");
 
 
 export default function VideoChat({ roomId, userName }) {
@@ -449,13 +449,13 @@ const goFullScreen = (element) => {
           <div className={`${isAnyScreenShareActive? "flex-[1]": "flex lg:flex-row flex-col gap-2"}`}> {/* both ur video and remote videos*/}
             <div className={`relative rounded-lg flex-[1] shadow-lg`}>
               <video ref={videoRef} autoPlay playsInline muted
-                className="w-full h-full object-cover rounded-lg"/>
+                className="w-full h-full object-cover rounded-lg transform scale-x-[-1]"/>
               <div className="absolute bottom-0 left-0 right-0 text-white text-md text-center py-1">
                 You idiot {/* your video*/}
               </div>
             </div>
             <div 
-              ref={remoteContainerRef} className={`${isAnyScreenShareActive? "h-[500px]" : "flex-[3]"} mt-1 lg:flex grid gap-1`}> {/* remote videos*/}
+              ref={remoteContainerRef} className={`${isAnyScreenShareActive? "h-[500px]" : "flex-[3]"} mt-1 lg:flex grid gap-1 transform scale-x-[-1]`}> {/* remote videos*/}
             </div>
           </div>
 
