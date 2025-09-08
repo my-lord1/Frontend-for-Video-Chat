@@ -265,6 +265,9 @@ useEffect(() => {
           console.log(`✅ CREATING NEW CONNECTION FOR ${peerId}`);
           const pc = new RTCPeerConnection({ iceServers });
           peerConnectionsRef.current[peerId] = pc;
+          pc.oniceconnectionstatechange = () => {
+            console.log(`ICE Connection State for ${peerId}:`, pc.iceConnectionState); // checking icestage
+          };
           
           console.log(`📥 Current connections after adding ${peerId}:`, Object.keys(peerConnectionsRef.current));
           addAllTracksToConnection(pc, localStreamRef,
@@ -304,6 +307,9 @@ useEffect(() => {
             console.log(`✅ NO CONNECTION EXISTS - CREATING NEW FOR ${from}`);
             pc = new RTCPeerConnection({ iceServers });
             peerConnectionsRef.current[from] = pc;
+            pc.oniceconnectionstatechange = () => {
+              console.log(`ICE Connection State for ${peerId}:`, pc.iceConnectionState); // checking ice stage
+            };
             
             console.log(`📥 Current connections after creating for ${from}:`, Object.keys(peerConnectionsRef.current));
             addAllTracksToConnection(pc, localStreamRef,
