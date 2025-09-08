@@ -308,7 +308,7 @@ useEffect(() => {
             pc = new RTCPeerConnection({ iceServers });
             peerConnectionsRef.current[from] = pc;
             pc.oniceconnectionstatechange = () => {
-              console.log(`ICE Connection State for ${peerId}:`, pc.iceConnectionState); // checking ice stage
+              console.log(`ICE Connection State for ${peerId}:`, pc.iceConnectionState); // checking ice stage//
             };
             
             console.log(`📥 Current connections after creating for ${from}:`, Object.keys(peerConnectionsRef.current));
