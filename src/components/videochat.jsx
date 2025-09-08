@@ -51,7 +51,7 @@ export default function VideoChat({ roomId, userName }) {
       username: "562d1114e4dc50fe9d84ab4e",
       credential: "45ZyG3oOoUe63vd4",
     },
-]
+]//new server
   
   const localStreamRef = useRef(null); // local stream to add in pc
   const socket1Ref = useRef(null); // socket refs
