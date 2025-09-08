@@ -29,19 +29,29 @@ export default function VideoChat({ roomId, userName }) {
   
   const iceServers = [
     {
-      urls: [
-        "stun:stun.l.google.com:19302",
-        "stun:stun2.l.google.com:19302"
-      ]
+      urls: "stun:stun.relay.metered.ca:80",
     },
     {
-      urls: ["turn:relay1.expressturn.com:3478?transport=udp",
-      "turn:relay1.expressturn.com:3478?transport=tcp",
-      "turns:relay1.expressturn.com:5349?transport=tcp"],
-      username: "000000002072631472",
-      credential: "Yj579oM/G9H3QMIap4gsGzc0QBE="
-    }
-  ];
+      urls: "turn:global.relay.metered.ca:80",
+      username: "562d1114e4dc50fe9d84ab4e",
+      credential: "45ZyG3oOoUe63vd4",
+    },
+    {
+      urls: "turn:global.relay.metered.ca:80?transport=tcp",
+      username: "562d1114e4dc50fe9d84ab4e",
+      credential: "45ZyG3oOoUe63vd4",
+    },
+    {
+      urls: "turn:global.relay.metered.ca:443",
+      username: "562d1114e4dc50fe9d84ab4e",
+      credential: "45ZyG3oOoUe63vd4",
+    },
+    {
+      urls: "turns:global.relay.metered.ca:443?transport=tcp",
+      username: "562d1114e4dc50fe9d84ab4e",
+      credential: "45ZyG3oOoUe63vd4",
+    },
+]
   
   const localStreamRef = useRef(null); // local stream to add in pc
   const socket1Ref = useRef(null); // socket refs
