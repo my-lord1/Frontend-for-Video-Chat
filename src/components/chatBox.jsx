@@ -10,7 +10,6 @@ export const useChat = (socket1, roomId, userName, chatOpen) => {
     if (!socket1) return;
 
     const handleChatMessage = (data) => {
-      console.log("Received chat message:", data);
       setMessages(prev => [...prev, data]);
       if (!chatOpen) {
         setUnreadCount(prev => prev + 1);

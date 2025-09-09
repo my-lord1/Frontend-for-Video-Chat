@@ -119,7 +119,6 @@ export default function VideoChat({ roomId, userName }) {
   useEffect(() => {
   const handleScreenShareStateUpdate = (data) => {
     const { isActive, sharerId, sharerSocketId } = data;
-    console.log("Screen share state update:", data); 
     if (isActive) {
       if (sharerSocketId === socket1.id) {
         setIsScreenShareActive(true);
@@ -234,7 +233,6 @@ useEffect(() => {
     if (localStreamRef.current) return;
 
     try {
-      console.log("before getuserMedia-isvideoON, isaudioON:", isvideoON, isaudioON);
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined },
         audio: { deviceId: selectedMicId ? { exact: selectedMicId } : undefined }
@@ -254,30 +252,21 @@ useEffect(() => {
       localStreamRef.current = stream;
       socket1Ref.current = socket1;
 
-      console.log(`🚀 JOINING ROOM: ${roomId}`);
+
       socket1.emit("join-room", { roomId, userName });
       
       setRoomJoined(true);
 
       socket1.on("existing-peers", async ({ peers}) => {
-        console.log(`📥 EXISTING-PEERS EVENT: Found ${peers.length} peers:`, peers);
-        console.log(`📥 Current connections before:`, Object.keys(peerConnectionsRef.current));
         
-        for (const peerId of peers) {
-          console.log(`\n🔄 PROCESSING PEER: ${peerId}`);
-          
+        
+        for (const peerId of peers) {          
           // Check if connection already exists
           if (peerConnectionsRef.current[peerId]) {
-            console.log(`❌ CONNECTION ALREADY EXISTS FOR ${peerId} - SKIPPING`);
             continue;
           }
-          
-          console.log(`✅ CREATING NEW CONNECTION FOR ${peerId}`);
           const pc = new RTCPeerConnection({ iceServers });
           peerConnectionsRef.current[peerId] = pc;
-          
-          
-          console.log(`📥 Current connections after adding ${peerId}:`, Object.keys(peerConnectionsRef.current));
           addAllTracksToConnection(pc, localStreamRef,
             selectedCameraId,
             selectedMicId,
@@ -286,97 +275,74 @@ useEffect(() => {
         );
         const peerName = remoteUserNamesRef.current[peerId]
         setupOnTrack(pc, peerId, remoteContainerRef, remoteStreamsRef, remoteScreenContainerRef, peerName);
-          
-          
-
           pc.onicecandidate = event => {
             if (event.candidate) {
-              console.log(`🧊 SENDING ICE CANDIDATE TO ${peerId}`);
               socket1.emit("signal", { to: peerId, type: "ice-candidate", payload: event.candidate });
             }
           };
-
-          console.log(`📤 CREATING AND SENDING OFFER TO ${peerId}`);
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
           socket1.emit("signal", { to: peerId, type: "offer", payload: offer });
         }
       });
       
-      socket1.on("signal", async ({ from, type, payload, remoteName2 }) => {
-        console.log(`\n📡 SIGNAL RECEIVED: ${type} FROM ${from}`);
-        console.log(`📡 Current connections:`, Object.keys(peerConnectionsRef.current));
-        
-        let pc = peerConnectionsRef.current[from];
-        
-       
+      socket1.on("signal", async ({ from, type, payload, remoteName2 }) => {        
+        let pc = peerConnectionsRef.current[from];       
         if (!pc) {
           if (type === "offer") {
-            console.log(`✅ NO CONNECTION EXISTS - CREATING NEW FOR ${from}`);
             pc = new RTCPeerConnection({ iceServers });
             peerConnectionsRef.current[from] = pc;
-            
-            
-            console.log(`📥 Current connections after creating for ${from}:`, Object.keys(peerConnectionsRef.current));
+
             addAllTracksToConnection(pc, localStreamRef,
               selectedCameraId,
               selectedMicId,
               isvideoON,
               isaudioON
-          );
-          
-          
+          );          
           const peerName2 = remoteName2
           setupOnTrack(pc, from, remoteContainerRef, remoteStreamsRef, remoteScreenContainerRef, peerName2);
 
             pc.onicecandidate = event => {
               if (event.candidate) {
-                console.log(`🧊 SENDING ICE CANDIDATE TO ${from}`);
                 socket1.emit("signal", { to: from, type: "ice-candidate", payload: event.candidate });
               }
             };
           } else {
-            console.error(`❌ NO PEER CONNECTION FOR ${from} WHEN HANDLING ${type}`);
             return;
           }
         } else {
-          console.log(`✅ USING EXISTING CONNECTION FOR ${from}`);
+          //console.log(`using existing connecton for ${from}`);
         }
 
-        console.log(`🔄 PEER CONNECTION STATE FOR ${from}: ${pc.signalingState}`);
+        //console.log(`pc state for ${from}: ${pc.signalingState}`);
 
         try {
           if (type === "offer") {
-            console.log(`📥 PROCESSING OFFER FROM ${from}`);
             await pc.setRemoteDescription(new RTCSessionDescription(payload));
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
-            console.log(`📤 SENDING ANSWER TO ${from}`);
             socket1.emit("signal", { to: from, type: "answer", payload: answer });
             
           } else if (type === "answer") {
-            console.log(`📥 PROCESSING ANSWER FROM ${from} (Expected state: have-local-offer, Actual: ${pc.signalingState})`);
             if (pc.signalingState === "have-local-offer") {
               await pc.setRemoteDescription(new RTCSessionDescription(payload));
-              console.log(`✅ ANSWER PROCESSED SUCCESSFULLY FROM ${from}`);
             } else {
-              console.error(`❌ WRONG STATE FOR ANSWER FROM ${from}: ${pc.signalingState}`);
+              //console.error(`wromg state ans from ${from}: ${pc.signalingState}`);
             }
             
           } else if (type === "ice-candidate") {
             if (payload && payload.candidate) {
-              console.log(`🧊 ADDING ICE CANDIDATE FROM ${from}`);
               await pc.addIceCandidate(new RTCIceCandidate(payload));
             }
           }
         } catch (err) {
-          console.error(`❌ ERROR HANDLING ${type} FROM ${from}:`, err);
-          console.error(`❌ PEER CONNECTION STATE: ${pc.signalingState}`);
+          //console.error(`error handling ${type} from ${from}:`, err);
+          //console.error(`pc state: ${pc.signalingState}`);
         }
       });
 
       socket1.on("user-disconnected", ({ socketId }) => {
-        console.log(`🚪 USER DISCONNECTED: ${socketId}`);
+        //console.log(`user discoonection: ${socketId}`);
         
         // Close peer connection
         if (peerConnectionsRef.current[socketId]) {
@@ -389,25 +355,16 @@ useEffect(() => {
         const screenEl = document.getElementById(`screen-${socketId}`);
         const cardEl = document.getElementById(`card-${socketId}`);
         
-        console.log(`🔍 Found elements for ${socketId}:`, {
-          video: !!videoEl,
-          screen: !!screenEl, 
-          card: !!cardEl
-        });
-        
         if (videoEl) {
-          console.log(`🗑️ Removing video element for ${socketId}`);
           videoEl.remove();
         }
         if (screenEl) {
-          console.log(`🗑️ Removing screen element for ${socketId}`);
           screenEl.remove();
         }
         if (cardEl) {
-          console.log(`🗑️ Removing card element for ${socketId}`);
           cardEl.remove();
         } else {
-          console.log(`❌ Card element not found for ${socketId}`);
+          //console.log(`Card element not found for ${socketId}`);
         }
         socket1.emit("stop-screen-share", { roomId });
   
@@ -551,7 +508,7 @@ const goFullScreen = (element) => {
           </div>
         </div>
 
-        {/* Participants Panel - Better positioned */}
+        {/* Participants Panel*/}
         { participants &&
         <div className="absolute lg:top-6 top-50 right-6 bg-white/95 backdrop-blur-sm rounded-3xl p-4 shadow-xl w-xs max-h-96 overflow-y-auto">
         <div className="flex justify-between">
@@ -650,4 +607,3 @@ const goFullScreen = (element) => {
     </div>
   );
 }
-//2
