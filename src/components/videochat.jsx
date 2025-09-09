@@ -11,7 +11,7 @@ import { Mic, MicOff, Video, VideoOff, ScreenShare, ScreenShareOff, MessageSquar
 import { useToggle } from "./useToggle.jsx"
 
 
-const socket1 = io("https://backend-for-video-chat.onrender.com" || "http://localhost:4000");
+const socket1 = io("https://backend-for-video-chat.onrender.com" || "http://localhost:4000"); 
 
 
 export default function VideoChat({ roomId, userName }) {

@@ -19,3 +19,4 @@ export const addAllTracksToConnection = (pc, localStreamRef, selectedCameraId, s
     pc.addTrack(audioTrack, stream);
   }
 };
+//12:40PM
