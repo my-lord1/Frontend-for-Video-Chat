@@ -12,6 +12,15 @@ A React-based frontend for a real-time video chat app using **WebRTC and React**
 ## Demo  
 👉 [Live Demo](https://videochat-two.vercel.app/)  
 
+## Note  
+
+Please try to test it out.  
+If the deployed website does not work, it may be because:  
+- The **backend server** is not running  
+- The **TURN server plan** is not active  
+
+👉 In that case, **clone the project and run it locally** using the setup steps above. 
+
 ## Setup  
 ```bash
 # Clone repo
@@ -24,11 +33,4 @@ npm install
 # Run dev server
 npm run dev
 
-## Note  
-
-Please try to test it out.  
-If the deployed website does not work, it may be because:  
-- The **backend server** is not running  
-- The **TURN server plan** is not active  
-
-👉 In that case, **clone the project and run it locally** using the setup steps above.  
+ 
