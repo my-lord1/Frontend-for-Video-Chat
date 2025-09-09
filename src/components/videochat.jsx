@@ -103,7 +103,7 @@ export default function VideoChat({ roomId, userName }) {
   useEffect(()=> {
     if (!socket1) return 
     const handler = ({ peerusernames }) => {
-      console.log("😎Received peernames data:", peerusernames);
+    //console.log("received peernames data:", peerusernames);
       setRemoteUserNames(peerusernames);
       remoteUserNamesRef.current = peerusernames;
     };
@@ -113,7 +113,7 @@ export default function VideoChat({ roomId, userName }) {
 
   useEffect(() => {
     remoteUserNamesRef.current = remoteUserNames;
-    console.log("😎Latest remoteUserNames:", remoteUserNamesRef.current);
+  //console.log("latest remoteUserNames:", remoteUserNamesRef.current);
   }, [remoteUserNames]);
   
   useEffect(() => {
