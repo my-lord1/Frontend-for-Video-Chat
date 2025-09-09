@@ -1,12 +1,12 @@
 # Video Chat Frontend  
 
-A React-based frontend for a real-time video chat app using **WebRTC and react**.  
+A React-based frontend for a real-time video chat app using **WebRTC and React**.  
 
 ## Features  
 - Join rooms with a Room ID  
 - Toggle mic and camera  
 - See active users with their status  
-- In-call chat messaging  
+- In call chat messaging  
 - Screen sharing support  
 
 ## Demo  
