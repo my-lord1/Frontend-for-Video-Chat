@@ -5,10 +5,10 @@ import { setupOnTrack } from "./setupontrack.jsx";
 import { addAllTracksToConnection } from "./addtrackstopc.jsx";
 import { handleEndCall } from "./handleleavecall.jsx";
 import { MediaContext } from "../components/mediaprovider";
-import { useChat } from "./chatBox.jsx";
-import { useParticipant } from "./participants.jsx";
+import { useChat } from "./useChatBox.jsx";
+import { useParticipant } from "./useParticipants.jsx";
 import { Mic, MicOff, Video, VideoOff, ScreenShare, ScreenShareOff, MessageSquareText, Users, LogOut, Send, X  } from 'lucide-react';
-import { useToggle } from "./stopscreenshare.jsx";
+import { useToggle } from "./useToggle.jsx"
 
 
 const socket1 = io("https://backend-for-video-chat.onrender.com" || "http://localhost:4000");
