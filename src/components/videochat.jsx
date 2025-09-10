@@ -424,7 +424,7 @@ const goFullScreen = (element) => {
               </div>
             </div>
             <div 
-              ref={remoteContainerRef} className={`${isAnyScreenShareActive? "h-[500px]" : "flex-[3]"} mt-1 lg:flex grid gap-1 transform scale-x-[-1]`}> {/* remote videos*/}
+              ref={remoteContainerRef} className={`${isAnyScreenShareActive? "h-[500px]" : "flex-[3]"} mt-1 lg:flex grid gap-1`}> {/* remote videos*/}
             </div>
           </div>
 

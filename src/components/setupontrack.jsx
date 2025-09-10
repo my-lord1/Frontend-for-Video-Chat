@@ -74,7 +74,7 @@ export const setupOnTrack = (peerConnection, peerId, remoteContainerRef, remoteS
           webcamVideo.id = `video-${peerId}`;
           webcamVideo.autoplay = true;
           webcamVideo.playsInline = true;
-          webcamVideo.className = "w-full h-full object-cover";
+          webcamVideo.className = "w-full h-full object-cover transform scale-x-[-1]";
           card.appendChild(webcamVideo);
           const label = document.createElement("div");
           label.innerHTML = `${peername}`;
