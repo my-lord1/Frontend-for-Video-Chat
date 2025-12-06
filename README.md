@@ -1,6 +1,6 @@
 # Video Chat Frontend  
 
-A React-based frontend for a real-time video chat app using **WebRTC and React**.  
+A full-stack real-time video chat application built with **React, WebRTC, Socket.IO, and Node.js**.  
 
 ## Features  
 - Join rooms with a Room ID  
